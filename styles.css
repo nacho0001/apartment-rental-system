@@ -1,0 +1,227 @@
+/* ---------- Global Styles ---------- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    line-height: 1.6;
+    padding: 20px;
+    background-color: #f9f9f9;
+    color: #333;
+}
+
+h1, h2 {
+    color: #4CAF50;
+}
+
+/* ---------- Header ---------- */
+header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* ---------- Registration Form ---------- */
+.registration form {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 10px 20px;
+    max-width: 600px;
+    margin: 40px;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.registration label {
+    align-self: center;
+}
+
+.registration input[type="text"],
+.registration input[type="email"],
+.registration input[type="tel"] {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    width: 100%;
+}
+
+.registration input[type="submit"] {
+    grid-column: 2 / 3;
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.registration input[type="submit"]:hover {
+    background-color: #45a049;
+}
+
+/* ---------- User Table ---------- */
+.user-table table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px auto;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.user-table th, .user-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.user-table th {
+    background-color: #4CAF50;
+    color: white;
+}
+
+/* ---------- Apartment Section ---------- */
+.apartment-sample {
+    text-align: center;
+    margin: 30px 0;
+}
+
+.apartment-logo {
+    max-width: 250px;
+    height: auto;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+/* ---------- Responsive Styles ---------- */
+@media (max-width: 900px) {
+    .registration form {
+        grid-template-columns: 1fr;
+    }
+
+    .registration input[type="submit"] {
+        grid-column: 1 / 2;
+    }
+
+    .user-table th, .user-table td {
+        padding: 10px;
+        font-size: 14px;
+    }
+}
+/* ---------- Apartment Cards Flexbox ---------- */
+.apartment-cards {
+    display: flex;
+    flex-wrap: wrap;      /* Allows cards to wrap to next row */
+    gap: 20px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.apartment-cards .card {
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    width: 250px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-align: center;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.apartment-cards .card img {
+    width: 100%;
+    height: auto;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+/* Card hover effect */
+.apartment-cards .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* ---------- Responsive for styles ---------- */
+@media (max-width: 900px) {
+    .apartment-cards {
+        flex-direction: column; /* Stack cards vertically on small screens */
+        align-items: center;
+    }
+
+    .apartment-cards .card {
+        width: 90%; /* Make cards wider on small screens */
+    }
+}
+@media (max-width: 768px) {
+    .apartment-cards {
+        flex-direction: column; /* Stack cards vertically on small screens */
+        align-items: center;
+    }
+
+    .apartment-cards .card {
+        width: 90%; /* Make cards wider on small screens */
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+
+    h1 {
+        font-size: 24px;
+    }
+
+    h2 {
+        font-size: 20px;
+    }
+
+    .apartment-logo {
+        max-width: 200px;
+    }
+}
+/* ---------- Navbar Styles ---------- */
+.navbar {
+    background-color: #333;
+    padding: 10px 0;
+    margin-bottom: 30px;
+}
+
+.navbar ul {
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.navbar li {
+    margin: 0 15px;
+}
+
+.navbar a {
+    color: white;
+    text-decoration: none;
+    padding: 8px 12px;
+    transition: background 0.3s, color 0.3s;
+    border-radius: 4px;
+}
+
+.navbar a:hover {
+    background-color: #4CAF50;
+    color: white;
+}
+
+/* ---------- Footer Styles ---------- */
+footer {
+    background-color: #333;
+    color: white;
+    text-align: center;
+    padding: 15px;
+    margin-top: 40px;
+    border-radius: 5px;
+}
+html {scroll-behavior: smooth;}

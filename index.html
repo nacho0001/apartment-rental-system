@@ -1,49 +1,95 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>Rent in addis</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta charset="UTF-8">
-    </head>
-    <body>
-        <h1>Rent in addis - apartments management</h1>
-        <p>Welcome to rent in addis! we help you list apartments, monitor rent payments, and manage tenants with easy</p>
-        <h2>Registor new user</h2>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rent in Addis</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <h1>Rent in Addis - Apartments Management</h1>
+        <p>Welcome to Rent in Addis! We help you list apartments, monitor rent payments, and manage tenants easily.</p>
+    </header>
+    <nav class="navbar">
+        <ul>
+            <li><a href="#registration">Dashboard</a></li>
+            <li><a href="#users">Register User</a></li>
+            <li><a href="#apartments">Apartments</a></li>
+        </ul>
+
+    <!-- Registration Section -->
+<sectionclass="dashboard id="registration">
+    <div class="registration">
+        <h2>Register New User</h2>
         <form action="#" method="post">
-            <label for="fullname">fullname:</label><br>
-            <input type="text" id="fullname" name="fullname" required><br><br>
+            <label for="fullName">Full Name:</label><br>
+            <input type="text" id="fullName" name="fullName" required><br><br>
 
-            <label for="email">email:</label><br>
-            <input type="email" id="email" name="email"> required><br><br>
+            <label for="email">Email:</label><br>
+            <input type="email" id="email" name="email" required><br><br>
 
-            <label for="phone">phone number:</label><br>
+            <label for="phone">Phone Number:</label><br>
             <input type="tel" id="phone" name="phone" required><br><br>
 
-            <input type="submit" value="Registor">
-
+            <input type="submit" value="Register">
         </form>
-        <h2>sample user table</h2>
-        <table border="1">
-            <tr>
-            <th>name</th>
-            <th>email</th>
-            <th>phone number</th>
-        </tr>
-        <tr>
-            <td>daniel getahun</td>
-            <td>danidaniel575700@gmail.com</td>
-            <td>0963575700</td>
-        </tr>
-        <tr>
-            <td>natnael dereje</td>
-            <td>natnaeldereje66@gmail.com</td>
-            <td>0966795827</td>
-        </tr>
+    </div>
+
+    <!-- User Table Section -->
+    <div class="user-table" id="users">
+        <h2>Sample Users</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone Number</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Daniel Getahun</td>
+                    <td>danidaniel575700@gmail.com</td>
+                    <td>0963575700</td>
+                </tr>
+                <tr>
+                    <td>Natnael Dereje</td>
+                    <td>natnaeldereje66@gmail.com</td>
+                    <td>0966795827</td>
+                </tr>
+            </tbody>
         </table>
-        <h2>apartment sample</h2>
-            <img src="logo rent.jpg" alt="website logo" width="250" height="100">
-            <p>explore more listings on <a href="https://www.apartments.dreamhouse-et.com/">rent in addis</a>
-            </p>
-            
-    </body>
+    </div>
+</section>
+
+    <!-- Apartment Sample Section -->
+<section class="apartment-sample" id="apartments">
+    <h2>Apartment Listings</h2>
+    <div class="apartment-cards">
+        <div class="card">
+            <img src="logo-rent.jpg" alt="Apartment 1">
+            <h3>Apartment 1</h3>
+            <p>2 bedrooms, 1 bathroom, Addis Ababa</p>
+        </div>
+        <div class="card">
+            <img src="logo-rent.jpg" alt="Apartment 2">
+            <h3>Apartment 2</h3>
+            <p>3 bedrooms, 2 bathrooms, Bole</p>
+        </div>
+        <div class="card">
+            <img src="logo-rent.jpg" alt="Apartment 3">
+            <h3>Apartment 3</h3>
+            <p>1 bedroom, 1 bathroom, Arat Kilo</p>
+        </div>
+    </div>
+</section>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2025 Rent in Addis. All rights reserved.</p>
+    </footer>
+</body>
 </html>
