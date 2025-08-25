@@ -16,80 +16,73 @@
     <nav class="navbar">
         <ul>
             <li><a href="#registration">Dashboard</a></li>
-            <li><a href="#users">Register User</a></li>
             <li><a href="#apartments">Apartments</a></li>
         </ul>
 
     <!-- Registration Section -->
-<sectionclass="dashboard id="registration">
+<section class="dashboard" id="registration">
     <div class="registration">
         <h2>Register New User</h2>
-        <form action="#" method="post">
-            <label for="fullName">Full Name:</label><br>
-            <input type="text" id="fullName" name="fullName" required><br><br>
+        <form action="#" method="post" class="register-form">
+            <label for="fullName">Full Name:</label>
+            <input type="text" id="fullName" name="fullName" required>
 
-            <label for="email">Email:</label><br>
-            <input type="email" id="email" name="email" required><br><br>
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
 
-            <label for="phone">Phone Number:</label><br>
-            <input type="tel" id="phone" name="phone" required><br><br>
+            <label for="phone">Phone Number:</label>
+            <input type="tel" id="phone" name="phone" required>
 
-            <input type="submit" value="Register">
+            <!-- Buttons side by side -->
+            <div class="form-buttons">
+                <input type="submit" value="Register">
+                <a href="#login" class="login-btn">Login</a>
+            </div>
+            <!-- Login Form (Initially hidden) -->
+<div class="login-form" id="login" style="display: none;">
+    <h2>Login</h2>
+    <form action="#" method="post">
+        <label for="loginEmail">Email:</label>
+        <input type="email" id="loginEmail" name="loginEmail" required>
+
+        <label for="loginPassword">Password:</label>
+        <input type="password" id="loginPassword" name="loginPassword" required>
+
+        <input type="submit" value="Login">
+    </form>
+</div>
         </form>
     </div>
+</section>
 
-    <!-- User Table Section -->
-    <div class="user-table" id="users">
-        <h2>Sample Users</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Phone Number</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Daniel Getahun</td>
-                    <td>danidaniel575700@gmail.com</td>
-                    <td>0963575700</td>
-                </tr>
-                <tr>
-                    <td>Natnael Dereje</td>
-                    <td>natnaeldereje66@gmail.com</td>
-                    <td>0966795827</td>
-                </tr>
-            </tbody>
-        </table>
+<section class="apartment-sample" id="apartments">
+    <h2>Apartment Listings</h2>
+    
+    <!-- Search Input -->
+    <input type="text" id="apartmentSearch" placeholder="Search apartments by name or location...">
+
+    <div class="apartment-cards">
+        <div class="card">
+            <img src="logo-rent.jpg" alt="Apartment 1">
+            <h3>Apartment 1</h3>
+            <p>2 bedrooms, 1 bathroom, Addis Ababa</p>
+        </div>
+        <div class="card">
+            <img src="logo-rent.jpg" alt="Apartment 2">
+            <h3>Apartment 2</h3>
+            <p>3 bedrooms, 2 bathrooms, Bole</p>
+        </div>
+        <div class="card">
+            <img src="logo-rent.jpg" alt="Apartment 3">
+            <h3>Apartment 3</h3>
+            <p>1 bedroom, 1 bathroom, Arat Kilo</p>
+        </div>
     </div>
 </section>
-
-    <!-- Apartment Sample Section -->
-<section class="apartment-sample" id="apartments">
-    <h2>Apartment Listings</h2>
-    <div class="apartment-cards">
-        <div class="card">
-            <img src="logo-rent.jpg" alt="Apartment 1">
-            <h3>Apartment 1</h3>
-            <p>2 bedrooms, 1 bathroom, Addis Ababa</p>
-        </div>
-        <div class="card">
-            <img src="logo-rent.jpg" alt="Apartment 2">
-            <h3>Apartment 2</h3>
-            <p>3 bedrooms, 2 bathrooms, Bole</p>
-        </div>
-        <div class="card">
-            <img src="logo-rent.jpg" alt="Apartment 3">
-            <h3>Apartment 3</h3>
-            <p>1 bedroom, 1 bathroom, Arat Kilo</p>
-        </div>
-    </div>
-</section>
-
     <!-- Footer -->
     <footer>
         <p>&copy; 2025 Rent in Addis. All rights reserved.</p>
     </footer>
+    <script src="script.js"></script>
 </body>
 </html>
