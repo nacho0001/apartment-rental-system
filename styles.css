@@ -3,7 +3,7 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: Arial, sans-serif;
+    font-family: 'Inter', Arial, sans-serif; /* Prioritized Inter font */
 }
 
 body {
@@ -15,6 +15,7 @@ body {
 
 h1, h2 {
     color: #4CAF50;
+    margin-bottom: 10px;
 }
 
 /* ---------- Header ---------- */
@@ -23,162 +24,7 @@ header {
     margin-bottom: 30px;
 }
 
-/* ---------- Registration Form ---------- */
-.registration form {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 10px 20px;
-    max-width: 600px;
-    margin: 40px auto;
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.registration label {
-    align-self: center;
-}
-
-.registration input[type="text"],
-.registration input[type="email"],
-.registration input[type="tel"] {
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-    width: 100%;
-}
-
-.registration input[type="submit"] {
-    grid-column: 2 / 3;
-    padding: 10px 20px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.registration input[type="submit"]:hover {
-    background-color: #45a049;
-}
-.register-form .form-buttons {
-    display: flex;
-    gap: 10px; /* space between buttons */
-    margin-top: 20px;
-}
-.login-form {
-    max-width: 400px;
-    margin: 30px auto;
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.login-form form {
-    display: grid;
-    gap: 10px;
-}
-
-.login-form input[type="email"],
-.login-form input[type="password"] {
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-    width: 100%;
-}
-
-.login-form input[type="submit"] {
-    padding: 10px 20px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-
-.login-form input[type="submit"]:hover {
-    background-color: #45a049;
-}
-
-/* Style the login button to match form */
-.login-btn {
-    display: inline-block;
-    padding: 10px 20px;
-    background-color: #f1f1f1;
-    color: #333;
-    text-decoration: none;
-    border-radius: 5px;
-    text-align: center;
-    transition: background 0.3s;
-}
-
-.login-btn:hover {
-    background-color: #ddd;
-}
-
-.register-form input[type="submit"] {
-    flex: 1; /* take remaining space */
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-
-.register-form input[type="submit"]:hover {
-    background-color: #45a049;
-}
-
-/* ---------- Apartment Section ---------- */
-.apartment-sample {
-    text-align: center;
-    margin: 30px 0;
-}
-
-.apartment-sample input[type="text"] {
-    width: 50%;
-    padding: 10px;
-    margin-bottom: 20px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-}
-
-/* ---------- Apartment Cards Flexbox ---------- */
-.apartment-cards {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    justify-content: center;
-    margin-top: 20px;
-}
-
-.apartment-cards .card {
-    background-color: #fff;
-    padding: 15px;
-    border-radius: 8px;
-    width: 250px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    text-align: center;
-    transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.apartment-cards .card img {
-    width: 100%;
-    height: auto;
-    border-radius: 5px;
-    margin-bottom: 10px;
-}
-
-.apartment-cards .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-
-/* ---------- Navbar Styles ---------- */
+/* ---------- Navbar ---------- */
 .navbar {
     background-color: #333;
     padding: 10px 0;
@@ -204,21 +50,221 @@ header {
     transition: background 0.2s;
 }
 
-.navbar a:hover {
+.navbar a:hover,
+.navbar a.active {
     background-color: #4CAF50;
     color: #fff;
 }
-.already-account {
-    margin-top: 15px;
-    text-align: right;
-    font-size: 14px;
+
+/* ---------- Flash Messages ---------- */
+.flash-messages {
+    max-width: 600px;
+    margin: 0 auto 20px;
 }
 
-.already-account a {
-    color: #4CAF50;
+.flash {
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    text-align: center;
+    color: #fff;
+}
+
+.flash.success {
+    background-color: #4CAF50;
+}
+
+.flash.error {
+    background-color: #f44336;
+}
+
+/* ---------- Form Container (General Form Layout) ---------- */
+/* This container defines the maximum width for the forms/page content on the public view */
+.form-container {
+    max-width: 600px; 
+    margin: 0 auto 40px;
+    padding: 0 20px;
+}
+
+/* --- Registration Form (UPDATED LAYOUT - Targeted Width Fix) --- */
+.registration form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    /* FIX: Set a specific narrow width for a better look and center it */
+    max-width: 400px; 
+    margin: 0 auto 40px; 
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.registration label {
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+/* --- Login/Registration/Add Form Inputs --- */
+.registration input[type="text"],
+.registration input[type="email"],
+.registration input[type="tel"],
+.registration input[type="password"],
+.add-form input[type="text"],
+.add-form input[type="number"],
+.add-form input[type="email"],
+.add-form input[type="tel"],
+.add-form input[type="date"],
+.add-form select,
+.login-form input[type="email"],
+.login-form input[type="password"] {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    width: 100%;
+    margin-bottom: 5px; 
+}
+
+/* --- Tenant Management Select/Dropdown Styling (NEW) --- */
+.add-form select {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    width: 100%;
+    margin-bottom: 10px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.register-form .form-buttons,
+.add-form .form-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: flex-end;
+}
+
+
+/* --- Button Base Styling --- */
+.register-form input[type="submit"],
+.login-btn,
+.add-form input[type="submit"] {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
     text-decoration: none;
+    text-align: center;
+    display: inline-block;
 }
 
-.already-account a:hover {
-    text-decoration: underline;
+.register-form input[type="submit"] {
+    background-color: #4CAF50;
+    color: white;
+    flex: 1;
 }
+
+.register-form input[type="submit"]:hover {
+    background-color: #45a049;
+}
+
+/* --- Login Form (Targeted Width Fix) --- */
+.login-form {
+/* --- Login Form (Targeted Width Fix) --- */
+
+    /* Reduced margin */
+    max-width: 400px;
+    margin: 15px auto; 
+    
+    background-color: #fff;
+    /* Reduced padding */
+    padding: 15px; 
+    
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.login-form form {
+    /* Reduced gap between form elements */
+    display: grid;
+    gap: 3px; 
+}
+/* ... The rest of your styles ... */
+
+.login-form input[type="submit"] {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.login-form input[type="submit"]:hover {
+    background-color: #45a049;
+}
+
+.login-btn {
+    display: inline-block;
+    background-color: #f1f1f1;
+    color: #333;
+    text-decoration: none;
+    text-align: center;
+    border-radius: 5px;
+}
+
+.login-btn:hover {
+    background-color: #ddd;
+}
+
+
+/* --- Management Button Overrides (for consistent color coding) --- */
+
+/* Green for Add Apartment */
+.management-area .login-btn[style*="#00796b"] { 
+    background-color: #00796b; 
+    color: white;
+}
+
+/* Orange for Add Tenant */
+.management-area .login-btn[style*="#f39c12"] { 
+    background-color: #f39c12; 
+    color: white;
+}
+
+/* Management Table Action Button Colors */
+.management-table .actions a, .management-table .actions input[type="submit"] {
+    margin-right: 8px;
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    transition: background 0.2s;
+    display: inline-block;
+    cursor: pointer;
+    border: none;
+}
+
+/* Management Table Action Button Colors */
+.management-table .action-edit {
+    background-color: #2196F3; /* Blue */
+    color: white;
+}
+
+.management-table .action-edit:hover {
+    background-color: #0b7dda;
+}
+
+.management-table .action-delete {
+    background-color: #f44336; /* Red */
+    color: white;
+}
+
+.management-table .action-delete:hover {
+    background-color: #d32f2f;
+}
+
+
+/* --- Dashboard KPI Styling --- */
+.dashboard-content .stat-box {
+    padding: 15px 25px;
+    border-radius: 6px;}

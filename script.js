@@ -1,55 +1,69 @@
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Get references to the main elements
+    const loginForm = document.querySelector('.login-form');
+    const registerForm = document.querySelector('.register-form');
 
-    // ---------- Apartment Search Filter ----------
-    const searchInput = document.getElementById("apartmentSearch");
-    const apartmentCards = document.querySelectorAll(".apartment-cards .card");
+    // These are the anchor links inside the forms used to switch views
+    const switchToRegisterLink = loginForm.querySelector('p a');
+    const switchToLoginLink = registerForm.querySelector('.login-btn');
 
-    if (searchInput) {
-        searchInput.addEventListener("input", function () {
-            const filter = searchInput.value.toLowerCase();
-            apartmentCards.forEach(card => {
-                const name = card.querySelector("h3").textContent.toLowerCase();
-                const location = card.querySelector("p").textContent.toLowerCase();
-                card.style.display = (name.includes(filter) || location.includes(filter)) ? "block" : "none";
-            });
+    // Function to show the Login form and hide Registration
+    function showLoginForm() {
+        loginForm.style.display = 'block';
+        registerForm.style.display = 'none';
+    }
+
+    // Function to show the Registration form and hide Login
+    function showRegisterForm() {
+        loginForm.style.display = 'none';
+        registerForm.style.display = 'block';
+    }
+
+    // 2. Set Initial State based on potential Flash Messages (for error persistence)
+    const flashMessages = document.querySelector('.flash-messages');
+    
+    // Check if any error messages are present
+    if (flashMessages) {
+        const errorMessages = flashMessages.querySelectorAll('.flash.error');
+        let registrationError = false;
+
+        // Loop through errors to determine where the failure occurred
+        errorMessages.forEach(msg => {
+            const messageText = msg.textContent.toLowerCase();
+            // A failure to register (e.g., email already exists)
+            if (messageText.includes('email is already registered') || messageText.includes('must be provided')) {
+                registrationError = true;
+            }
+        });
+
+        // If there was a registration error, keep the registration form open.
+        // Otherwise, assume it was a login error or success, and show the login form.
+        if (registrationError) {
+            showRegisterForm();
+        } else {
+            showLoginForm();
+        }
+    } else {
+        // Default state: Show the Login form when no messages are present
+        showLoginForm();
+    }
+
+
+    // 3. Attach Event Listeners for switching
+    
+    // Listener to switch from Login to Registration
+    if (switchToRegisterLink) {
+        switchToRegisterLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            showRegisterForm();
         });
     }
 
-    // ---------- Navbar Active Link Highlight ----------
-    const sections = document.querySelectorAll("section");
-    const navLinks = document.querySelectorAll(".navbar a");
-
-    window.addEventListener("scroll", function () {
-        let current = "";
-        sections.forEach(section => {
-            const sectionTop = section.offsetTop - 80;
-            const sectionHeight = section.offsetHeight;
-            if (window.scrollY >= sectionTop && window.scrollY < sectionTop + sectionHeight) {
-                current = section.getAttribute("id");
-            }
-        });
-
-        navLinks.forEach(link => {
-            link.classList.remove("active");
-            if (link.getAttribute("href") === `#${current}`) {
-                link.classList.add("active");
-            }
-        });
-    });
-
-    // ---------- Login Form Toggle ----------
-    const loginBtn = document.querySelector(".login-btn");
-    const loginForm = document.getElementById("login");
-
-    if (loginBtn && loginForm) {
-        loginBtn.addEventListener("click", function(e) {
+    // Listener to switch from Registration back to Login
+    if (switchToLoginLink) {
+        switchToLoginLink.addEventListener('click', function(e) {
             e.preventDefault();
-            if (loginForm.style.display === "none") {
-                loginForm.style.display = "block";
-                loginForm.scrollIntoView({ behavior: "smooth" });
-            } else {
-                loginForm.style.display = "none";
-            }
+            showLoginForm();
         });
     }
 });
