@@ -6,7 +6,7 @@ from functools import wraps
 
 app = Flask(__name__)
 # IMPORTANT: Use a complex, randomly generated key in production
-app.secret_key = "secret_key" 
+app.secret_key = "secret_key"
 # NOTE: Please change this line in a production environment!
 
 # ---------------- Database Connection ----------------
@@ -44,15 +44,14 @@ def init_db():
         )
     ''')
 
-    # 3. Tenants Table (new table for tenant management)
-    # Added ON DELETE SET NULL to handle cases where an apartment is deleted
+    # 3. Tenants Table (for tenant management)
     conn.execute('''
         CREATE TABLE IF NOT EXISTS tenants (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             fullName TEXT NOT NULL,
             phone TEXT NOT NULL,
             email TEXT,
-            apartment_id INTEGER,
+            apartment_id INTEGER UNIQUE, -- Added UNIQUE constraint for 1 tenant per apt
             lease_start TEXT,
             FOREIGN KEY (apartment_id) REFERENCES apartments (id) ON DELETE SET NULL
         )
@@ -91,19 +90,24 @@ def login_required(f):
         return f(*args, **kwargs)
     return wrapper
 
+def get_available_apartments(conn):
+    """Fetches a list of apartments not currently assigned to a tenant."""
+    # This query ensures only apartments NOT associated with any tenant are returned.
+    return conn.execute('''
+        SELECT a.id, a.name, a.bedrooms, a.bathrooms, a.location, a.rent
+        FROM apartments a
+        LEFT JOIN tenants t ON a.id = t.apartment_id
+        WHERE t.apartment_id IS NULL
+        ORDER BY a.name
+    ''').fetchall()
+
 # ---------------- Core Routes ----------------
 
 @app.route('/')
 def home():
     conn = get_db_connection()
-    # UPDATED: Fetch ONLY apartments that are not currently assigned to a tenant
-    apartments = conn.execute('''
-        SELECT a.*
-        FROM apartments a
-        LEFT JOIN tenants t ON a.id = t.apartment_id
-        WHERE t.apartment_id IS NULL
-        ORDER BY a.rent DESC
-    ''').fetchall()
+    # Fetch ONLY apartments that are not currently assigned to a tenant using the utility function
+    apartments = get_available_apartments(conn)
     conn.close()
     
     return render_template('index.html', apartments=apartments)
@@ -183,7 +187,7 @@ def dashboard():
     
     # 2. Total Occupied Units
     # Count how many *unique* apartments currently have a tenant assigned
-    occupied_units = conn.execute('SELECT COUNT(DISTINCT apartment_id) FROM tenants WHERE apartment_id IS NOT NULL').fetchone()[0]
+    occupied_units = conn.execute('SELECT COUNT(apartment_id) FROM tenants WHERE apartment_id IS NOT NULL').fetchone()[0]
     
     # 3. Total Tenant Count (Total people under management)
     total_tenants = conn.execute('SELECT COUNT(id) FROM tenants').fetchone()[0]
@@ -206,6 +210,7 @@ def dashboard():
 @app.route('/add_apartment', methods=['GET', 'POST'])
 @login_required
 def add_apartment():
+    conn = None # Initialize conn
     if request.method == 'POST':
         name = request.form.get('name')
         location = request.form.get('location')
@@ -213,47 +218,51 @@ def add_apartment():
         # 1. Basic Validation
         if not all([name, location, request.form.get('bedrooms'), request.form.get('bathrooms'), request.form.get('rent')]):
             flash("All fields are required.", "error")
+            # No conn needed yet, so no close
             return render_template('add_apartment.html', form_data=request.form)
 
-        # 2. Type/Value Validation
+        # 2. Type/Value Validation and DB Insert
+        conn = get_db_connection() 
         try:
             bedrooms = int(request.form['bedrooms'])
             bathrooms = int(request.form['bathrooms'])
             rent = float(request.form['rent'])
             
             if bedrooms <= 0 or bathrooms <= 0 or rent <= 0:
-                 raise ValueError("Bedrooms, Bathrooms, and Rent must be positive numbers.")
+                raise ValueError("Bedrooms, Bathrooms, and Rent must be positive numbers.")
 
+            # Insert data if validation succeeds
+            conn.execute('INSERT INTO apartments (name, location, bedrooms, bathrooms, rent) VALUES (?, ?, ?, ?, ?)',
+                         (name, location, bedrooms, bathrooms, rent))
+            conn.commit()
+            
+            flash(f"Apartment '{name}' added successfully!", "success")
+            return redirect(url_for('manage_apartments'))
+        
         except ValueError as e:
             flash(f"Data error: {e}", "error")
             return render_template('add_apartment.html', form_data=request.form) # Return submitted data
-
-        conn = get_db_connection()
-        conn.execute('INSERT INTO apartments (name, location, bedrooms, bathrooms, rent) VALUES (?, ?, ?, ?, ?)',
-                     (name, location, bedrooms, bathrooms, rent))
-        conn.commit()
-        conn.close()
         
-        flash(f"Apartment '{name}' added successfully!", "success")
-        return redirect(url_for('manage_apartments'))
-        
+        finally:
+            if conn:
+                conn.close()
+            
     return render_template('add_apartment.html')
 
 @app.route('/manage_apartments')
 @login_required
 def manage_apartments():
     conn = get_db_connection()
-    # UPDATED: Join apartments with tenants to determine occupancy status (tenant_count)
+    # Join apartments with tenants to determine occupancy status
     apartments = conn.execute('''
         SELECT 
             a.*,
-            COUNT(t.id) AS tenant_count
+            t.fullName AS tenant_name,
+            t.id AS tenant_id
         FROM 
             apartments a
         LEFT JOIN 
             tenants t ON a.id = t.apartment_id
-        GROUP BY
-            a.id
         ORDER BY 
             a.name
     ''').fetchall()
@@ -264,7 +273,8 @@ def manage_apartments():
 @login_required
 def edit_apartment(id):
     conn = get_db_connection()
-    # UPDATED: Join with tenants to get current tenant info for display
+    
+    # Fetch apartment and current tenant info
     apartment = conn.execute('''
         SELECT 
             a.*, 
@@ -287,27 +297,32 @@ def edit_apartment(id):
         name = request.form['name']
         location = request.form['location']
         
-        # Type/Value Validation
         try:
             bedrooms = int(request.form['bedrooms'])
             bathrooms = int(request.form['bathrooms'])
             rent = float(request.form['rent'])
             
             if bedrooms <= 0 or bathrooms <= 0 or rent <= 0:
-                 raise ValueError("Bedrooms, Bathrooms, and Rent must be positive numbers.")
+                raise ValueError("Bedrooms, Bathrooms, and Rent must be positive numbers.")
+
+            conn.execute('UPDATE apartments SET name = ?, location = ?, bedrooms = ?, bathrooms = ?, rent = ? WHERE id = ?',
+                         (name, location, bedrooms, bathrooms, rent, id))
+            conn.commit()
+            flash(f"Apartment '{name}' updated successfully!", "success")
+            return redirect(url_for('manage_apartments'))
+
         except ValueError as e:
+            # Type/Value Validation failed
             flash(f"Data error: {e}", "error")
+            # Re-render with existing data and error message
+            # The connection will be closed by the finally block.
+            return render_template('edit_apartment.html', apartment=apartment, form_data=request.form)
+
+        finally:
+            # Connection closure is guaranteed after POST attempt
             conn.close()
-            # Return GET request to fetch original apartment data again
-            return redirect(url_for('edit_apartment', id=id))
-
-        conn.execute('UPDATE apartments SET name = ?, location = ?, bedrooms = ?, bathrooms = ?, rent = ? WHERE id = ?',
-                     (name, location, bedrooms, bathrooms, rent, id))
-        conn.commit()
-        conn.close()
-        flash(f"Apartment '{name}' updated successfully!", "success")
-        return redirect(url_for('manage_apartments'))
-
+            
+    # GET request: Close connection after fetching data
     conn.close()
     return render_template('edit_apartment.html', apartment=apartment)
 
@@ -317,57 +332,100 @@ def delete_apartment(id):
     conn = get_db_connection()
     apartment = conn.execute('SELECT name FROM apartments WHERE id = ?', (id,)).fetchone()
     
-    # Deletion is safe due to ON DELETE SET NULL constraint on tenants table
-    conn.execute('DELETE FROM apartments WHERE id = ?', (id,))
-    conn.commit()
-    conn.close()
-    
-    if apartment:
-        flash(f"Apartment '{apartment['name']}' deleted successfully. Any linked tenants are now unassigned.", "success")
-    else:
-        flash("Apartment deleted successfully.", "success")
+    try:
+        # Deletion is safe due to ON DELETE SET NULL constraint on tenants table
+        conn.execute('DELETE FROM apartments WHERE id = ?', (id,))
+        conn.commit()
+        
+        if apartment:
+            flash(f"Apartment '{apartment['name']}' deleted successfully. Any linked tenants are now unassigned.", "success")
+        else:
+            flash("Apartment deleted successfully.", "success")
+    except Exception as e:
+        flash(f"Error deleting apartment: {e}", "error")
+    finally:
+        conn.close()
         
     return redirect(url_for('manage_apartments'))
 
-# --- Tenant Management (CRUD) ---
+
+# ---------------- Tenant Management (CRUD) ----------------
 
 @app.route('/add_tenant', methods=['GET', 'POST'])
 @login_required
 def add_tenant():
     conn = get_db_connection()
-    # Fetch all apartments for the assignment dropdown
-    apartments = conn.execute('SELECT id, name FROM apartments ORDER BY name').fetchall()
-    conn.close()
+    available_apartments = get_available_apartments(conn)
+    form_data_to_render = {}
 
     if request.method == 'POST':
-        fullName = request.form['fullName']
-        phone = request.form['phone']
-        email = request.form.get('email', '')
-        apartment_id = request.form.get('apartment_id')
-        lease_start = request.form['lease_start']
-        
-        if not apartment_id:
-            apartment_id = None
-        
-        conn = get_db_connection()
-        conn.execute('INSERT INTO tenants (fullName, phone, email, apartment_id, lease_start) VALUES (?, ?, ?, ?, ?)',
-                     (fullName, phone, email, apartment_id, lease_start))
-        conn.commit()
-        conn.close()
-        
-        flash(f"Tenant '{fullName}' added successfully!", "success")
-        return redirect(url_for('manage_tenants')) 
+        fullName = (request.form.get('fullName') or '').strip()
+        phone = (request.form.get('phone') or '').strip()
+        email = request.form.get('email') or None
+        apartment_id_raw = request.form.get('apartment_id') or ''
+        lease_start = request.form.get('lease_start') or None
 
-    return render_template('add_tenant.html', apartments=apartments)
+        form_data_to_render = request.form
+        
+        # --- 1. Validation ---
+        if not fullName or not phone or not lease_start:
+            flash("Tenant's Full Name, Phone, and Lease Start Date are required.", "error")
+            conn.close() # Close connection on validation failure
+            return render_template('add_tenant.html', available_apartments=available_apartments, form_data=form_data_to_render)
+
+        # --- 2. Apartment ID conversion ---
+        apt_id_for_db = None
+        if apartment_id_raw and apartment_id_raw != 'None':
+            try:
+                apt_id_for_db = int(apartment_id_raw)
+            except ValueError:
+                flash("Invalid apartment selection.", "error")
+                conn.close() # Close connection on conversion error
+                return render_template('add_tenant.html', available_apartments=available_apartments, form_data=form_data_to_render)
+
+        # --- 3. Database Insert ---
+        try:
+            conn.execute(
+                'INSERT INTO tenants (fullName, phone, email, apartment_id, lease_start) VALUES (?, ?, ?, ?, ?)',
+                (fullName, phone, email, apt_id_for_db, lease_start)
+            )
+            conn.commit()
+            flash("Tenant added successfully.", "success")
+            return redirect(url_for('manage_tenants'))
+
+        except IntegrityError:
+            flash("The selected apartment is already assigned to a tenant. Please choose an available unit.", "error")
+            return render_template('add_tenant.html', available_apartments=available_apartments, form_data=form_data_to_render)
+
+        except Exception as e:
+            print(f"add_tenant error: {e}")
+            flash("Database error occurred while adding tenant. Check server console for details.", "error")
+            return render_template('add_tenant.html', available_apartments=available_apartments, form_data=form_data_to_render)
+
+        finally:
+            # GUARANTEE connection closure for all POST outcomes (success or DB exception)
+            conn.close()
+
+    # GET request: close the connection after fetching data and before rendering
+    conn.close()
+    return render_template('add_tenant.html', available_apartments=available_apartments, form_data=form_data_to_render)
+
 
 @app.route('/manage_tenants')
 @login_required
 def manage_tenants():
+    """Route to view, edit, and delete all tenant records."""
     conn = get_db_connection()
-    # Join tenants and apartments tables to display the apartment name
+    
+    # Fetch all tenants, joining with the apartments table to show which unit they occupy
     tenants = conn.execute('''
         SELECT 
-            t.id, t.fullName, t.phone, t.email, t.lease_start, a.name AS apartment_name
+            t.id, 
+            t.fullName, 
+            t.phone, 
+            t.email, 
+            t.lease_start, 
+            a.name AS apartment_name
         FROM 
             tenants t
         LEFT JOIN 
@@ -375,45 +433,71 @@ def manage_tenants():
         ORDER BY 
             t.fullName
     ''').fetchall()
+    
     conn.close()
-    return render_template('manage_tenants.html', tenants=tenants)
+    return render_template('manage_tenants.html', tenants=tenants) 
 
 @app.route('/edit_tenant/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_tenant(id):
     conn = get_db_connection()
     tenant = conn.execute('SELECT * FROM tenants WHERE id = ?', (id,)).fetchone()
-    # Get all apartments for the dropdown in the form
-    apartments = conn.execute('SELECT id, name FROM apartments ORDER BY name').fetchall()
 
     if tenant is None:
         conn.close()
         flash("Tenant not found.", "error")
         return redirect(url_for('manage_tenants'))
+    
+    # 2. Get available apartments (include current tenant's unit)
+    current_apt_id = tenant['apartment_id'] if tenant and tenant['apartment_id'] else -1 # Use -1 if unassigned
+    available_apartments = conn.execute('''
+        SELECT a.id, a.name
+        FROM apartments a
+        LEFT JOIN tenants t ON a.id = t.apartment_id
+        WHERE t.apartment_id IS NULL OR a.id = ?
+        ORDER BY a.name
+    ''', (current_apt_id,)).fetchall()
 
     if request.method == 'POST':
-        fullName = request.form['fullName']
-        phone = request.form['phone']
-        email = request.form.get('email', '')
+        fullName = request.form.get('fullName')
+        phone = request.form.get('phone')
+        email = request.form.get('email')
         apartment_id = request.form.get('apartment_id')
-        lease_start = request.form['lease_start']
-        
-        if not apartment_id:
-            apartment_id = None
+        lease_start = request.form.get('lease_start')
 
-        conn.execute('''
-            UPDATE tenants 
-            SET fullName = ?, phone = ?, email = ?, apartment_id = ?, lease_start = ? 
-            WHERE id = ?
-            ''',
-            (fullName, phone, email, apartment_id, lease_start, id))
-        conn.commit()
-        conn.close()
-        flash(f"Tenant '{fullName}' updated successfully!", "success")
-        return redirect(url_for('manage_tenants'))
+        if not all([fullName, phone, lease_start]):
+            flash("Tenant's Full Name, Phone, and Lease Start Date are required.", "error")
+            # Connection remains open until finally block
+            return redirect(url_for('edit_tenant', id=id))
 
+        # Handle unassigned case
+        apt_id_for_db = int(apartment_id) if apartment_id and apartment_id != 'None' else None
+
+        try:
+            conn.execute('UPDATE tenants SET fullName = ?, phone = ?, email = ?, apartment_id = ?, lease_start = ? WHERE id = ?',
+                         (fullName, phone, email, apt_id_for_db, lease_start, id))
+            conn.commit()
+            flash(f"Tenant '{fullName}' updated successfully!", "success")
+            return redirect(url_for('manage_tenants'))
+
+        except IntegrityError:
+            flash("The selected apartment is already assigned to a different tenant. Please choose an available unit.", "error")
+            # Connection remains open until finally block
+            return redirect(url_for('edit_tenant', id=id))
+            
+        except Exception as e:
+            flash(f"An error occurred while updating the tenant: {e}", "error")
+            # Connection remains open until finally block
+            return redirect(url_for('edit_tenant', id=id))
+            
+        finally:
+            # Guaranteed closure for all POST paths
+            conn.close()
+            
+    # GET request: Close connection after fetching data
     conn.close()
-    return render_template('edit_tenant.html', tenant=tenant, apartments=apartments)
+    return render_template('edit_tenant.html', tenant=tenant, available_apartments=available_apartments)
+
 
 @app.route('/delete_tenant/<int:id>', methods=['POST'])
 @login_required
@@ -421,17 +505,20 @@ def delete_tenant(id):
     conn = get_db_connection()
     tenant = conn.execute('SELECT fullName FROM tenants WHERE id = ?', (id,)).fetchone()
     
-    conn.execute('DELETE FROM tenants WHERE id = ?', (id,))
-    conn.commit()
-    conn.close()
-    
     if tenant:
-        flash(f"Tenant '{tenant['fullName']}' deleted successfully.", "success")
+        try:
+            conn.execute('DELETE FROM tenants WHERE id = ?', (id,))
+            conn.commit()
+            flash(f"Tenant '{tenant['fullName']}' deleted successfully. The associated apartment is now available.", "success")
+        except Exception as e:
+            flash(f"Error deleting tenant: {e}", "error")
+        finally:
+            conn.close()
     else:
-        flash("Tenant deleted successfully.", "success")
+        flash("Tenant not found.", "error")
+        conn.close() # Close connection even if tenant is not found
         
     return redirect(url_for('manage_tenants'))
-
 
 # ---------------- Run App ----------------
 if __name__ == "__main__":
