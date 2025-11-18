@@ -56,10 +56,26 @@ def init_db():
             FOREIGN KEY (apartment_id) REFERENCES apartments (id) ON DELETE SET NULL
         )
     ''')
+
+    # ------------------ SPECIALIZATION ADDITION ------------------
+    # 4. Rent Payments Table (for tracking financial transactions)
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS rent_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id INTEGER NOT NULL,
+            amount_paid REAL NOT NULL,
+            payment_date TEXT NOT NULL,
+            payment_for_month TEXT NOT NULL, -- Format: YYYY-MM
+            status TEXT NOT NULL, -- e.g., 'Paid', 'Partial', 'Late'
+            FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE
+        )
+    ''')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_tenant_id ON rent_payments (tenant_id)')
+    # -------------------------------------------------------------
     
     # Insert Sample Apartment Data (Only if the table is empty)
-    cursor = conn.execute('SELECT COUNT(*) FROM apartments')
-    if cursor.fetchone()[0] == 0:
+    cursor_apt = conn.execute('SELECT COUNT(*) FROM apartments')
+    if cursor_apt.fetchone()[0] == 0:
         print("Inserting sample apartment data...")
         sample_apartments = [
             ('Goro Deluxe Apt', 3, 2, 'Goro', 15000.00),
@@ -74,6 +90,17 @@ def init_db():
         # Insert a sample tenant to demonstrate occupied/available status
         conn.execute('INSERT INTO tenants (fullName, phone, email, apartment_id, lease_start) VALUES (?, ?, ?, ?, ?)',
                      ('Abebe Kebede', '0911223344', 'abebek@example.com', 1, '2024-01-01'))
+
+    # Insert Sample Payment Data (Only if the table is empty AND tenant exists)
+    cursor_pay = conn.execute('SELECT COUNT(*) FROM rent_payments')
+    if cursor_pay.fetchone()[0] == 0:
+        tenant_id_goro = conn.execute('SELECT id FROM tenants WHERE apartment_id = 1').fetchone()
+        if tenant_id_goro:
+            print("Inserting sample payment data...")
+            conn.execute(
+                'INSERT INTO rent_payments (tenant_id, amount_paid, payment_date, payment_for_month, status) VALUES (?, ?, ?, ?, ?)',
+                (tenant_id_goro['id'], 15000.00, '2024-11-15', '2024-11', 'Paid')
+            )
     
     conn.commit()
     conn.close()
@@ -191,6 +218,19 @@ def dashboard():
     
     # 3. Total Tenant Count (Total people under management)
     total_tenants = conn.execute('SELECT COUNT(id) FROM tenants').fetchone()[0]
+
+    # ------------------ SPECIALIZATION METRICS ------------------
+    # Total Collected Rent (Lifetime)
+    collected_rent = conn.execute('SELECT SUM(amount_paid) FROM rent_payments').fetchone()[0] or 0.0
+    
+    # Expected Monthly Rent Roll (Based on current occupancy)
+    expected_monthly_rent = conn.execute('''
+        SELECT SUM(a.rent) 
+        FROM apartments a
+        JOIN tenants t ON a.id = t.apartment_id
+        WHERE t.apartment_id IS NOT NULL 
+    ''').fetchone()[0] or 0.0
+    # -------------------------------------------------------------
     
     conn.close()
     
@@ -202,8 +242,54 @@ def dashboard():
         user_name=session['user_name'],
         total_apartments=total_apartments,
         available_apartments=available_apartments,
-        total_tenants=total_tenants
+        total_tenants=total_tenants,
+        collected_rent=collected_rent, # Added for specialization display
+        expected_monthly_rent=expected_monthly_rent # Added for specialization display
     )
+
+# ------------------ SPECIALIZATION ROUTE: FINANCIAL OVERVIEW ------------------
+
+@app.route('/financial_overview')
+@login_required
+def financial_overview():
+    conn = get_db_connection()
+    
+    # Total Collected Rent (Lifetime)
+    collected_rent = conn.execute('SELECT SUM(amount_paid) FROM rent_payments').fetchone()[0] or 0.0
+
+    # Expected Monthly Rent Roll (Based on current occupancy)
+    expected_monthly_rent = conn.execute('''
+        SELECT SUM(a.rent) 
+        FROM apartments a
+        JOIN tenants t ON a.id = t.apartment_id
+        WHERE t.apartment_id IS NOT NULL 
+    ''').fetchone()[0] or 0.0
+    
+    # Last 10 Payments (Recent activity)
+    recent_payments = conn.execute('''
+        SELECT 
+            rp.amount_paid, 
+            rp.payment_date, 
+            rp.payment_for_month,
+            rp.status,
+            t.fullName AS tenant_name, 
+            a.name AS apartment_name
+        FROM rent_payments rp
+        JOIN tenants t ON rp.tenant_id = t.id
+        LEFT JOIN apartments a ON t.apartment_id = a.id
+        ORDER BY rp.payment_date DESC
+        LIMIT 10
+    ''').fetchall()
+    
+    conn.close()
+    
+    return render_template('financial_overview.html',
+        collected_rent=collected_rent,
+        expected_monthly_rent=expected_monthly_rent,
+        recent_payments=recent_payments
+    )
+
+# ------------------------------------------------------------------------------
 
 # --- Apartment Management (CRUD) ---
 
@@ -507,6 +593,7 @@ def delete_tenant(id):
     
     if tenant:
         try:
+            # Deleting the tenant will cascade the deletion of associated rent_payments (ON DELETE CASCADE)
             conn.execute('DELETE FROM tenants WHERE id = ?', (id,))
             conn.commit()
             flash(f"Tenant '{tenant['fullName']}' deleted successfully. The associated apartment is now available.", "success")
@@ -519,6 +606,87 @@ def delete_tenant(id):
         conn.close() # Close connection even if tenant is not found
         
     return redirect(url_for('manage_tenants'))
+
+# ------------------ SPECIALIZATION ROUTE: LOG PAYMENT (FIXED) ------------------
+
+@app.route('/log_payment/<int:tenant_id>', methods=['GET', 'POST'])
+@login_required
+def log_payment(tenant_id):
+    conn = get_db_connection()
+    # Fetch tenant and the apartment's rent
+    tenant = conn.execute('''
+        SELECT 
+            t.*, 
+            a.name AS apartment_name, 
+            a.rent 
+        FROM tenants t 
+        LEFT JOIN apartments a ON t.apartment_id = a.id 
+        WHERE t.id = ?
+    ''', (tenant_id,)).fetchone()
+
+    if not tenant:
+        conn.close()
+        flash("Tenant not found.", "error")
+        return redirect(url_for('manage_tenants'))
+
+    if tenant['apartment_id'] is None:
+        conn.close()
+        flash("Cannot log payment. This tenant is not currently assigned to an apartment.", "error")
+        return redirect(url_for('manage_tenants'))
+
+    # FIX: Initialize form_data with an empty dictionary for the GET request
+    # This prevents the 'form_data is undefined' Jinja error on initial load.
+    form_data = {} 
+
+    if request.method == 'POST':
+        # Store submitted data in case of validation failure
+        form_data = request.form
+
+        try:
+            # 1. Validation and Type Check
+            amount_paid_str = request.form.get('amount_paid')
+            payment_date = request.form.get('payment_date')
+            payment_for_month = request.form.get('payment_for_month')
+            
+            if not all([amount_paid_str, payment_date, payment_for_month]):
+                flash("All payment fields are required.", "error")
+                return render_template('log_payment.html', tenant=tenant, form_data=form_data)
+            
+            amount_paid = float(amount_paid_str)
+            if amount_paid <= 0:
+                raise ValueError("Amount must be a positive number.")
+            
+            # 2. Simple status check based on the apartment's rent
+            status = 'Paid' if amount_paid >= tenant['rent'] else 'Partial'
+
+            # 3. Database Insert
+            conn.execute(
+                'INSERT INTO rent_payments (tenant_id, amount_paid, payment_date, payment_for_month, status) VALUES (?, ?, ?, ?, ?)',
+                (tenant_id, amount_paid, payment_date, payment_for_month, status)
+            )
+            conn.commit()
+            
+            flash(f"Payment of {amount_paid:,.2f} ETB logged for {tenant['fullName']} for {payment_for_month}.", "success")
+            return redirect(url_for('manage_tenants'))
+
+        except ValueError as e:
+            flash(f"Invalid amount or date format: {e}", "error")
+            # If validation fails, re-render the form with the error and submitted data
+            return render_template('log_payment.html', tenant=tenant, form_data=form_data)
+        
+        except Exception as e:
+            flash(f"A database error occurred: {e}", "error")
+            return render_template('log_payment.html', tenant=tenant, form_data=form_data)
+            
+        finally:
+            if conn:
+                conn.close()
+    
+    # GET request (initial load): form_data is already initialized as {} above
+    conn.close()
+    return render_template('log_payment.html', tenant=tenant, form_data=form_data)
+
+# ------------------------------------------------------------------------------
 
 # ---------------- Run App ----------------
 if __name__ == "__main__":

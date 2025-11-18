@@ -3,127 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Tenants - Rent in Addis</title>
-    <!-- Load Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Manage Tenants | Rent in Addis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"> 
     <style>
-        /* Custom font */
-        body { font-family: 'Inter', sans-serif; }
+        /* Simple inline styles to match your previous structure */
+        .tenant-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .tenant-table th, .tenant-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        .tenant-table th {
+            background-color: #f39c12; /* Matching the tenant theme color */
+            color: white;
+        }
+        .action-link {
+            display: inline-block;
+            padding: 6px 10px;
+            margin-right: 5px;
+            border-radius: 4px;
+            text-decoration: none;
+            color: white;
+            font-size: 0.9em;
+        }
+        .action-edit { background-color: #3f51b5; }
+        .action-log-payment { background-color: #27ae60; } /* New green color for payment */
+        .action-delete { background-color: #e74c3c; }
+        .action-delete button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 0;
+            margin: 0;
+            font-size: 0.9em;
+        }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body>
 
-    <!-- Navigation/Header (Replicate Dashboard/Base Layout) -->
-    <nav class="bg-indigo-600 p-4 shadow-lg">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <h1 class="text-white text-2xl font-bold">Rent in Addis - Manager Panel</h1>
-            <div>
-                <a href="{{ url_for('dashboard') }}" class="text-indigo-200 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
-                <a href="{{ url_for('manage_apartments') }}" class="text-indigo-200 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Apartments</a>
-                <a href="{{ url_for('manage_tenants') }}" class="bg-indigo-700 text-white px-3 py-2 rounded-md text-sm font-medium">Tenants</a>
-                <a href="{{ url_for('logout') }}" class="text-red-300 hover:text-red-100 px-3 py-2 rounded-md text-sm font-medium ml-4">Logout</a>
-            </div>
-        </div>
-    </nav>
+<header>
+    <h1>Rent in Addis</h1>
+    <p>Tenant Management</p>
+</header>
 
-    <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="space-y-3 mb-6">
-                {% for category, message in messages %}
-                    <div class="p-4 rounded-lg text-sm {% if category == 'success' %}bg-green-100 text-green-700{% elif category == 'error' %}bg-red-100 text-red-700{% else %}bg-blue-100 text-blue-700{% endif %}" role="alert">
-                        {{ message }}
-                    </div>
+<nav class="navbar">
+    <ul>
+        <li><a href="{{ url_for('home') }}">Public Listings</a></li>
+        <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+        <li><a href="{{ url_for('logout') }}">Logout</a></li>
+    </ul>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<section class="dashboard-content">
+    <h2>Manage Tenant Records</h2>
+    <div style="margin-bottom: 20px;">
+        <a href="{{ url_for('add_tenant') }}" class="login-btn" style="background-color: #27ae60;">
+            <i class="fas fa-user-plus"></i> Add New Tenant
+        </a>
+    </div>
+
+    {% if tenants %}
+        <table class="tenant-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Unit Assigned</th>
+                    <th>Lease Start</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tenant in tenants %}
+                <tr>
+                    <td>{{ tenant.fullName }}</td>
+                    <td>{{ tenant.phone }}</td>
+                    <td>{{ tenant.email or 'N/A' }}</td>
+                    <td>{{ tenant.apartment_name or 'Unassigned' }}</td>
+                    <td>{{ tenant.lease_start }}</td>
+                    <td>
+                        <a href="{{ url_for('edit_tenant', id=tenant.id) }}" class="action-link action-edit" title="Edit Tenant">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        
+                        <a href="{{ url_for('log_payment', tenant_id=tenant.id) }}" class="action-link action-log-payment" title="Log Payment">
+                            <i class="fas fa-money-bill-wave"></i> Log Payment
+                        </a>
+
+                        <form action="{{ url_for('delete_tenant', id=tenant.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete tenant {{ tenant.fullName }}? This action cannot be undone.');">
+                            <button type="submit" class="action-link action-delete" title="Delete Tenant">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
                 {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
+            </tbody>
+        </table>
+    {% else %}
+        <p style="padding: 15px; border: 1px solid #ccc; border-radius: 4px;">No tenants currently under management.</p>
+    {% endif %}
 
-        <!-- Header and Add Button -->
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-3xl font-extrabold text-gray-900">
-                Tenant Management
-            </h2>
-            <a href="{{ url_for('add_tenant') }}" class="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition duration-150 ease-in-out">
-                + Add New Tenant
-            </a>
-        </div>
+    <div style="margin-top: 30px;">
+        <a href="{{ url_for('dashboard') }}" class="login-btn" style="background-color: #95a5a6;">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</section>
 
-        <!-- Tenants Table -->
-        <div class="bg-white shadow-xl rounded-xl overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Name
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Phone
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Email
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Assigned Apartment
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Lease Start
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for tenant in tenants %}
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    {{ tenant['fullName'] }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ tenant['phone'] }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ tenant['email'] or 'N/A' }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    {% if tenant['apartment_name'] %}
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                            {{ tenant['apartment_name'] }}
-                                        </span>
-                                    {% else %}
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                            Unassigned
-                                        </span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ tenant['lease_start'] }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                    
-                                    <a href="{{ url_for('edit_tenant', id=tenant['id']) }}" class="text-indigo-600 hover:text-indigo-900">Edit</a>
-                                    
-                                    <form method="POST" action="{{ url_for('delete_tenant', id=tenant['id']) }}" class="inline ml-2" onsubmit="return confirm('Are you sure you want to delete tenant {{ tenant["fullName"] }}?');">
-                                        <button type="submit" class="text-red-600 hover:text-red-900 bg-transparent border-none p-0 cursor-pointer">Delete</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="6" class="px-6 py-12 text-center text-gray-500 italic">
-                                    No tenants found. Click "Add New Tenant" to get started!
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<footer>
+    <p>&copy; 2025 Rent in Addis. All rights reserved.</p>
+</footer>
 
-    </main>
 </body>
 </html>
