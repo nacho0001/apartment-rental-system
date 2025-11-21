@@ -1,0 +1,11 @@
+name: mobile_rent_in_addis # <--- ADD THIS LINE (Use a suitable name)
+environment:
+  sdk: '>=3.0.0 <4.0.0' # Use your desired Flutter/Dart version here
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sqflite: ^2.2.8+4
+  path_provider: ^2.1.5
+  path: ^1.8.4
+  crypto: ^3.0.3 # Added for password hashing
