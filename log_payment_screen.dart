@@ -3,7 +3,7 @@ import 'db_helper.dart';
 
 class LogPaymentScreen extends StatefulWidget {
   final Map<String, dynamic> tenant;
-  LogPaymentScreen({required this.tenant});
+  const LogPaymentScreen({super.key, required this.tenant});
 
   @override
   _LogPaymentScreenState createState() => _LogPaymentScreenState();

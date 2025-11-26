@@ -7,22 +7,23 @@ import 'apartments_screen.dart'; // Screen 4: Apartments listing
 import 'tenants_screen.dart'; // Screen 5: Tenants listing (New Import)
 
 void main() async {
-  // Ensure that Flutter widgets are bound before any async calls (like DB init)
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize the database connection (assuming DBHelper handles this setup)
-  // This ensures the database is ready before the app UI loads.
-  await DBHelper().database; 
-  
-  runApp(MyApp());
+  try {
+    await DBHelper().database; // ensure DB is initialized before app runs
+  } catch (e, st) {
+    debugPrint('DB initialization failed: $e\n$st');
+    // Continue launching app; screens should handle DB errors gracefully
+  }
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Rent in Addis',
-      // Using Inter font for a modern look (if available in the environment)
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         fontFamily: 'Inter',
@@ -40,23 +41,30 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      
-      // The application starts at the LoginScreen
       initialRoute: '/',
-      
-      // Defining named routes for navigation
+      // remove 'const' here to match screens that may not have const constructors
       routes: {
         '/': (context) => LoginScreen(),
         '/register': (context) => RegisterScreen(),
-        
-        // '/dashboard' route expects a user object. 
-        '/dashboard': (context) => DashboardScreen(user: {}), // placeholder
-        
-        '/apartments': (context) => ApartmentsScreen(), 
-        
-        // New route added for TenantsScreen
+        '/apartments': (context) => ApartmentsScreen(),
         '/tenants': (context) => TenantsScreen(),
       },
+      onGenerateRoute: (settings) {
+        if (settings.name == '/dashboard') {
+          final args = settings.arguments;
+          final user =
+              args is Map<String, dynamic> ? args : <String, dynamic>{};
+          return MaterialPageRoute(
+              builder: (ctx) => DashboardScreen(user: user),
+              settings: settings);
+        }
+        return null;
+      },
+      onUnknownRoute: (settings) => MaterialPageRoute(
+        builder: (ctx) => const Scaffold(
+          body: Center(child: Text('404: Route not found')),
+        ),
+      ),
     );
   }
 }

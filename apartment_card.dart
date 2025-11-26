@@ -9,8 +9,8 @@ class ApartmentCard extends StatelessWidget {
     required this.apartment,
     required this.onEdit,
     required this.onDelete,
-    Key? key, // Added Key for best practice
-  }) : super(key: key);
+    super.key, // Added Key for best practice
+  });
 
   @override
   Widget build(BuildContext context) {

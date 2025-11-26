@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'db_helper.dart';
-// NOTE: You must import your LogPaymentScreen here!
-// Assuming it's in a file named 'log_payment_screen.dart'
-import 'log_payment_screen.dart'; // <--- ADD THIS IMPORT
+import 'log_payment_screen.dart'; // Ensure this import is correct
 
 class TenantsScreen extends StatefulWidget {
+  const TenantsScreen({super.key});
+
   @override
   _TenantsScreenState createState() => _TenantsScreenState();
 }
 
 class _TenantsScreenState extends State<TenantsScreen> {
+  final DBHelper _dbHelper = DBHelper();
   List<Map<String, dynamic>> tenants = [];
-  List<Map<String, dynamic>> availableApartments = [];
+  List<Map<String, dynamic>> allApartments = []; // FIX: Use a list of ALL apartments for the dropdown
   bool loading = true;
 
   @override
@@ -21,127 +22,200 @@ class _TenantsScreenState extends State<TenantsScreen> {
   }
 
   Future<void> loadTenants() async {
-    final db = await DBHelper().database;
+    setState(() => loading = true);
+    try {
+      final db = await _dbHelper.database;
 
-    final tenantsResult = await db.rawQuery('''
-      SELECT t.*, a.name as apartment_name
-      FROM tenants t
-      LEFT JOIN apartments a ON t.apartment_id = a.id
-      ORDER BY t.fullName
-    ''');
+      // FIX 1: Query ALL apartments for the dropdown, whether occupied or not
+      final allAptResult = await db.rawQuery('SELECT id, name, rent FROM apartments ORDER BY name');
+      
+      // Query tenants joined with their assigned apartment name
+      final tenantsResult = await db.rawQuery('''
+        SELECT t.*, a.name as apartment_name
+        FROM tenants t
+        LEFT JOIN apartments a ON t.apartment_id = a.id
+        ORDER BY t.fullName
+      ''');
 
-    final availableAptResult = await db.rawQuery('''
-      SELECT a.id, a.name
-      FROM apartments a
-      LEFT JOIN tenants t ON a.id = t.apartment_id
-      WHERE t.apartment_id IS NULL
-      ORDER BY a.name
-    ''');
-
-    setState(() {
-      tenants = tenantsResult;
-      availableApartments = availableAptResult;
-      loading = false;
-    });
+      if (mounted) {
+        setState(() {
+          tenants = tenantsResult;
+          allApartments = allAptResult; // Assign all apartments here
+          loading = false;
+        });
+      }
+    } catch (e, st) {
+      debugPrint("Error loading tenants/apartments: $e\n$st");
+      if (mounted) {
+         setState(() => loading = false);
+         ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to load data."), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<void> deleteTenant(int id) async {
-    final db = await DBHelper().database;
-    await db.delete('tenants', where: 'id = ?', whereArgs: [id]);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Tenant deleted")));
-    loadTenants();
+    try {
+      final db = await _dbHelper.database;
+      final count = await db.delete('tenants', where: 'id = ?', whereArgs: [id]);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(count > 0 ? "Tenant deleted successfully" : "No tenant found to delete"),
+            backgroundColor: count > 0 ? Colors.green : Colors.orange,
+          ),
+        );
+      }
+      loadTenants();
+    } catch (e) {
+      debugPrint("Error deleting tenant: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to delete tenant"), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   void showTenantForm({Map<String, dynamic>? tenant}) {
-    final _formKey = GlobalKey<FormState>();
-    String fullName = tenant?['fullName'] ?? '';
-    String phone = tenant?['phone'] ?? '';
-    String email = tenant?['email'] ?? '';
-    String leaseStart = tenant?['lease_start'] ?? '';
-    int? apartmentId = tenant?['apartment_id'];
+    final formKey = GlobalKey<FormState>();
+    // Create new controllers for proper state management in the dialog
+    final fullNameCtrl = TextEditingController(text: tenant?['fullName'] ?? '');
+    final phoneCtrl = TextEditingController(text: tenant?['phone'] ?? '');
+    final emailCtrl = TextEditingController(text: tenant?['email'] ?? '');
+    final leaseStartCtrl = TextEditingController(text: tenant?['lease_start'] ?? '');
+    
+    int? apartmentId = (tenant != null && tenant['apartment_id'] is int) ? tenant['apartment_id'] as int : null;
 
+    // FIX 2: Identify apartments that are currently occupied by OTHERS (excluding the current tenant being edited)
+    Set<int?> occupiedApartmentIds = tenants
+      .where((t) => t['id'] != tenant?['id'] && t['apartment_id'] != null)
+      .map((t) => t['apartment_id'] as int?)
+      .toSet();
+
+    // Combine all apartment options with the option to unassign
+    List<DropdownMenuItem<int?>> apartmentOptions = [
+      const DropdownMenuItem<int?>(
+        value: null,
+        child: Text("Unassigned"),
+      ),
+      ...allApartments.map((a) {
+        final aptId = a['id'] as int;
+        final isOccupiedByOther = occupiedApartmentIds.contains(aptId);
+        
+        return DropdownMenuItem<int?>(
+          value: aptId,
+          // FIX 3: Disable/Grey out apartments occupied by someone else
+          enabled: !isOccupiedByOther, 
+          child: Text(
+            '${a['name']} ${isOccupiedByOther ? '(Occupied)' : ''}', 
+            style: isOccupiedByOther ? const TextStyle(color: Colors.grey) : null,
+          ),
+        );
+      }).toList(),
+    ];
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(tenant == null ? "Add Tenant" : "Edit Tenant"),
         content: SingleChildScrollView(
           child: Form(
-            key: _formKey,
+            key: formKey,
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 TextFormField(
-                  initialValue: fullName,
-                  decoration: InputDecoration(labelText: "Full Name"),
-                  validator: (val) => val!.isEmpty ? "Required" : null,
-                  onSaved: (val) => fullName = val!.trim(),
+                  controller: fullNameCtrl,
+                  decoration: const InputDecoration(labelText: "Full Name"),
+                  validator: (val) => (val == null || val.isEmpty) ? "Required" : null,
                 ),
                 TextFormField(
-                  initialValue: phone,
-                  decoration: InputDecoration(labelText: "Phone"),
-                  validator: (val) => val!.isEmpty ? "Required" : null,
-                  onSaved: (val) => phone = val!.trim(),
+                  controller: phoneCtrl,
+                  decoration: const InputDecoration(labelText: "Phone"),
+                  keyboardType: TextInputType.phone,
+                  validator: (val) => (val == null || val.isEmpty) ? "Required" : null,
                 ),
                 TextFormField(
-                  initialValue: email,
-                  decoration: InputDecoration(labelText: "Email (optional)"),
-                  onSaved: (val) => email = val!.trim(),
+                  controller: emailCtrl,
+                  decoration: const InputDecoration(labelText: "Email (optional)"),
+                  keyboardType: TextInputType.emailAddress,
                 ),
                 TextFormField(
-                  initialValue: leaseStart,
-                  decoration: InputDecoration(labelText: "Lease Start (YYYY-MM-DD)"),
-                  validator: (val) => val!.isEmpty ? "Required" : null,
-                  onSaved: (val) => leaseStart = val!.trim(),
+                  controller: leaseStartCtrl,
+                  decoration: const InputDecoration(labelText: "Lease Start (YYYY-MM-DD)"),
+                  validator: (val) => (val == null || val.isEmpty) ? "Required" : null,
                 ),
-                DropdownButtonFormField<int>(
-                  value: apartmentId,
-                  items: [
-                    DropdownMenuItem<int>(
-                      value: null,
-                      child: Text("Unassigned"),
-                    ),
-                    ...availableApartments.map((a) => DropdownMenuItem<int>(
-                          value: a['id'],
-                          child: Text(a['name']),
-                        )),
-                  ],
-                  onChanged: (val) => apartmentId = val,
-                  decoration: InputDecoration(labelText: "Apartment"),
+                // FIX: Added StatefulWidget/StatefulBuilder logic for Dropdown value update
+                StatefulBuilder(
+                  builder: (context, setStateSB) {
+                    return DropdownButtonFormField<int?>(
+                      value: apartmentId,
+                      items: apartmentOptions,
+                      onChanged: (val) {
+                        setStateSB(() {
+                          apartmentId = val;
+                        });
+                      },
+                      decoration: const InputDecoration(labelText: "Apartment"),
+                    );
+                  }
                 ),
               ],
             ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(
             child: Text(tenant == null ? "Add" : "Update"),
             onPressed: () async {
-              if (_formKey.currentState!.validate()) {
-                _formKey.currentState!.save();
-                final db = await DBHelper().database;
-                if (tenant == null) {
-                  try {
-                    await db.insert('tenants', {
-                      'fullName': fullName,
-                      'phone': phone,
-                      'email': email,
-                      'apartment_id': apartmentId,
-                      'lease_start': leaseStart,
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Tenant added")));
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: Apartment already assigned")));
+              if (formKey.currentState!.validate()) {
+                
+                final tenantData = {
+                  'fullName': fullNameCtrl.text.trim(),
+                  'phone': phoneCtrl.text.trim(),
+                  'email': emailCtrl.text.trim(),
+                  'apartment_id': apartmentId,
+                  'lease_start': leaseStartCtrl.text.trim(),
+                };
+                
+                final db = await _dbHelper.database;
+                
+                try {
+                  if (tenant == null) {
+                    await db.insert('tenants', tenantData);
+                    
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tenant added"), backgroundColor: Colors.green));
+                  } else {
+                    await db.update(
+                      'tenants', 
+                      tenantData,
+                      where: 'id = ?', 
+                      whereArgs: [tenant['id']],
+                    );
+                    
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tenant updated"), backgroundColor: Colors.green));
                   }
-                } else {
-                  await db.update('tenants', {
-                    'fullName': fullName,
-                    'phone': phone,
-                    'email': email,
-                    'apartment_id': apartmentId,
-                    'lease_start': leaseStart,
-                  }, where: 'id = ?', whereArgs: [tenant['id']]);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Tenant updated")));
+                } catch (e) {
+                  debugPrint("Tenant save error: $e");
+                  if (!mounted) return;
+                  // Handle unique constraint error (if a unique index is on apartment_id)
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Error saving tenant. Check constraints."), backgroundColor: Colors.red),
+                  );
                 }
+                
+                // Dispose controllers after use
+                fullNameCtrl.dispose();
+                phoneCtrl.dispose();
+                emailCtrl.dispose();
+                leaseStartCtrl.dispose();
+                
+                if (!mounted) return;
                 Navigator.pop(context);
                 loadTenants();
               }
@@ -155,42 +229,70 @@ class _TenantsScreenState extends State<TenantsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Tenants")),
+      appBar: AppBar(title: const Text("Tenants")),
       body: loading
-          ? Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: tenants.length,
-              itemBuilder: (context, index) {
-                final t = tenants[index];
-                return Card(
-                  child: ListTile(
-                    title: Text(t['fullName']),
-                    subtitle: Text("Phone: ${t['phone']}\nEmail: ${t['email'] ?? '-'}\nApartment: ${t['apartment_name'] ?? 'Unassigned'}\nLease Start: ${t['lease_start']}"),
-                    isThreeLine: true,
-                    // *** Trailing Row Updated Here ***
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // New Log Payment Button
-                        IconButton(
-                          icon: const Icon(Icons.payment),
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              // Ensure you have defined LogPaymentScreen to accept a 'tenant' argument
-                              builder: (_) => LogPaymentScreen(tenant: t), 
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: loadTenants,
+              child: tenants.isEmpty
+                  ? Center(
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: const [
+                          Center(child: Text("No tenants added yet.", style: TextStyle(color: Colors.grey))),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: tenants.length,
+                      itemBuilder: (context, index) {
+                        final t = tenants[index];
+                        final int? tenantId = t['id'] is int ? t['id'] as int : null;
+                        
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                          child: ListTile(
+                            title: Text(t['fullName']),
+                            subtitle: Text(
+                              "Phone: ${t['phone']}\nApartment: ${t['apartment_name'] ?? 'Unassigned'}\nLease Start: ${t['lease_start']}",
+                            ),
+                            isThreeLine: true,
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Log Payment Button
+                                IconButton(
+                                  icon: const Icon(Icons.payment, color: Colors.blue),
+                                  onPressed: () {
+                                    if (tenantId != null) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          // Ensure LogPaymentScreen accepts a Map<String, dynamic> tenant argument
+                                          builder: (_) => LogPaymentScreen(tenant: t), 
+                                        ),
+                                      ).then((_) => loadTenants()); // Refresh list when returning
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text("Tenant ID required for payment.")),
+                                      );
+                                    }
+                                  },
+                                ),
+                                // Edit Button
+                                IconButton(icon: const Icon(Icons.edit, color: Colors.orange), onPressed: () => showTenantForm(tenant: t)),
+                                // Delete Button
+                                IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () {
+                                  if (tenantId != null) {
+                                    deleteTenant(tenantId);
+                                  }
+                                }),
+                              ],
                             ),
                           ),
-                        ),
-                        // Existing Edit Button
-                        IconButton(icon: const Icon(Icons.edit), onPressed: () => showTenantForm(tenant: t)),
-                        // Existing Delete Button
-                        IconButton(icon: const Icon(Icons.delete), onPressed: () => deleteTenant(t['id'])),
-                      ],
+                        );
+                      },
                     ),
-                  ),
-                );
-              },
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => showTenantForm(),
