@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <!-- ✅ Fix: Added viewport meta element -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Add Tenant | Rent in Addis</title>
+
+    <!-- Example CSS (Bootstrap recommended for layout consistency) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+
+    <div class="container mt-5 mb-5">
+        <h2 class="mb-4 text-center">Add New Tenant</h2>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <!-- Tenant Form -->
+        <form method="POST" action="{{ url_for('add_tenant') }}" class="card p-4 shadow-sm bg-white">
+            <div class="mb-3">
+                <label for="fullName" class="form-label">Full Name *</label>
+                <input type="text" class="form-control" id="fullName" name="fullName"
+                       value="{{ form_data.fullName or '' }}" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="phone" class="form-label">Phone *</label>
+                <input type="text" class="form-control" id="phone" name="phone"
+                       value="{{ form_data.phone or '' }}" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="email" class="form-label">Email (optional)</label>
+                <input type="email" class="form-control" id="email" name="email"
+                       value="{{ form_data.email or '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="apartment_id" class="form-label">Assign Apartment</label>
+                <select id="apartment_id" name="apartment_id" class="form-select">
+                    <option value="">-- Select an Available Apartment --</option>
+                    {% for apt in available_apartments %}
+                        <option value="{{ apt.id }}"
+                            {% if form_data.apartment_id == apt.id|string %}selected{% endif %}>
+                            {{ apt.name }} ({{ apt.location }} - {{ apt.bedrooms }}BR/{{ apt.bathrooms }}BA, ETB {{ apt.rent }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="lease_start" class="form-label">Lease Start Date *</label>
+                <input type="date" class="form-control" id="lease_start" name="lease_start"
+                       value="{{ form_data.lease_start or '' }}" required>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('manage_tenants') }}" class="btn btn-secondary">Back to Tenant List</a>
+                <button type="submit" class="btn btn-primary">Add Tenant</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

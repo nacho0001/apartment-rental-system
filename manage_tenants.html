@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Tenants | Rent in Addis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"> 
+    <style>
+        /* Simple inline styles to match your previous structure */
+        .tenant-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .tenant-table th, .tenant-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        .tenant-table th {
+            background-color: #f39c12; /* Matching the tenant theme color */
+            color: white;
+        }
+        .action-link {
+            display: inline-block;
+            padding: 6px 10px;
+            margin-right: 5px;
+            border-radius: 4px;
+            text-decoration: none;
+            color: white;
+            font-size: 0.9em;
+        }
+        .action-edit { background-color: #3f51b5; }
+        .action-log-payment { background-color: #27ae60; } /* New green color for payment */
+        .action-delete { background-color: #e74c3c; }
+        .action-delete button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 0;
+            margin: 0;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Rent in Addis</h1>
+    <p>Tenant Management</p>
+</header>
+
+<nav class="navbar">
+    <ul>
+        <li><a href="{{ url_for('home') }}">Public Listings</a></li>
+        <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+        <li><a href="{{ url_for('logout') }}">Logout</a></li>
+    </ul>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<section class="dashboard-content">
+    <h2>Manage Tenant Records</h2>
+    <div style="margin-bottom: 20px;">
+        <a href="{{ url_for('add_tenant') }}" class="login-btn" style="background-color: #27ae60;">
+            <i class="fas fa-user-plus"></i> Add New Tenant
+        </a>
+    </div>
+
+    {% if tenants %}
+        <table class="tenant-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Unit Assigned</th>
+                    <th>Lease Start</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tenant in tenants %}
+                <tr>
+                    <td>{{ tenant.fullName }}</td>
+                    <td>{{ tenant.phone }}</td>
+                    <td>{{ tenant.email or 'N/A' }}</td>
+                    <td>{{ tenant.apartment_name or 'Unassigned' }}</td>
+                    <td>{{ tenant.lease_start }}</td>
+                    <td>
+                        <a href="{{ url_for('edit_tenant', id=tenant.id) }}" class="action-link action-edit" title="Edit Tenant">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        
+                        <a href="{{ url_for('log_payment', tenant_id=tenant.id) }}" class="action-link action-log-payment" title="Log Payment">
+                            <i class="fas fa-money-bill-wave"></i> Log Payment
+                        </a>
+
+                        <form action="{{ url_for('delete_tenant', id=tenant.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete tenant {{ tenant.fullName }}? This action cannot be undone.');">
+                            <button type="submit" class="action-link action-delete" title="Delete Tenant">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p style="padding: 15px; border: 1px solid #ccc; border-radius: 4px;">No tenants currently under management.</p>
+    {% endif %}
+
+    <div style="margin-top: 30px;">
+        <a href="{{ url_for('dashboard') }}" class="login-btn" style="background-color: #95a5a6;">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</section>
+
+<footer>
+    <p>&copy; 2025 Rent in Addis. All rights reserved.</p>
+</footer>
+
+</body>
+</html>
