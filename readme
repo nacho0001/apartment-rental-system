@@ -1,0 +1,49 @@
+🏢 Rent in Addis - Property Management System (Flask/SQLite)
+A lightweight web application built with Flask for managing rental properties, tenants, and tracking rent payments. This application is designed to be a simple, secure, and centralized tool for property managers.
+
+🚀 Features
+User Authentication: Secure registration and login for property managers/admins using werkzeug.security (hashing passwords).
+Apartment Management (CRUD):
+
+Add, view, edit, and delete apartment listings with details like name, location, bedrooms, bathrooms, and monthly rent.
+
+Automatically tracks occupancy status.
+
+Tenant Management (CRUD):
+
+Add, view, edit, and delete tenant records.
+
+Assign tenants to available apartments (enforced by database constraints).
+
+Financial Tracking (Specialization):Log Rent Payments against specific tenants and months.Automatic calculation of payment status (Paid or Partial) based on the apartment's rent.Dashboard/Financial Overview with key metrics: Total Units, Available Units, Total Tenants, Total Collected Rent, and Expected Monthly Rent Roll.
+
+Component,Technology,Description
+Backend Framework,Python Flask,Lightweight micro-framework for the web application logic and routing.
+Database,SQLite3,A serverless relational database for simple data storage.
+Security,werkzeug.security,Used for hashing and checking user passwords.
+Database Structure,Relational (SQL),"Four tables: users, apartments, tenants, and rent_payments."
+
+⚙️ Installation and Setup
+Prerequisites
+Python 3.x
+
+Flask and supporting libraries.
+Step-by-Step Guide
+Clone the Repository (or save the Python code as app.py).
+
+Install Dependencies: This project primarily uses Flask and built-in Python libraries (sqlite3, functools). You only need to install Flask and Werkzeug:
+
+Run the Application: Execute the Python file. The application will automatically initialize the database (database.db) and insert sample data (apartments, one tenant, and one payment) on the first run.
+
+Access the App: Open your web browser and navigate to the address shown (default: http://127.0.0.1:5000)
+
+Route,Method,Access,Description
+/,GET,Public,Home page showing available apartments.
+/register,POST,Public,Registers a new user/manager.
+/login,POST,Public,"Logs a user in, setting the session."
+/logout,GET,User,Clears the session and logs the user out.
+/dashboard,GET,@login_required,Main management dashboard with key metrics.
+/manage_apartments,GET,@login_required,List and overview of all properties.
+/add_tenant,"GET, POST",@login_required,Form to onboard a new tenant.
+/log_payment/<id>,"GET, POST",@login_required,Form to record a rent payment for a specific tenant.
+/financial_overview,GET,@login_required,"Detailed view of rent collection, expected roll, and recent transactions."
